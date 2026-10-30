@@ -2,47 +2,79 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>Lab 3 - Voo do Morcego</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; background: #090a10; }
     body {
       background: #090a10;
       color: #f8fafc;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      padding: 10px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       min-height: 100dvh;
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+      padding-left: calc(8px + env(safe-area-inset-left, 0px));
+      padding-right: calc(8px + env(safe-area-inset-right, 0px));
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: #7c3aed #1e1b34;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
     }
+    body::-webkit-scrollbar { width: 8px; }
+    body::-webkit-scrollbar-track { background: #1e1b34; border-radius: 4px; }
+    body::-webkit-scrollbar-thumb {
+      background: #7c3aed;
+      border-radius: 4px;
+      border: 2px solid #1e1b34;
+    }
+    body::-webkit-scrollbar-thumb:hover { background: #f97316; }
+
+    /* Elementos diretos: ordem vertical no layout padrão (coluna única) */
     #canvas-morcego {
       display: block;
       width: 100%;
       max-width: 900px;
       height: auto;
       aspect-ratio: 960 / 340;
+      max-height: 62dvh;
       background: linear-gradient(to bottom, #0a0618 0%, #1a0b2e 50%, #2a0f1f 100%);
       border-radius: 12px;
       touch-action: none;
+      flex-shrink: 0;
     }
     .hud {
       display: flex;
-      gap: 16px;
+      gap: 14px;
       font-size: 16px;
       flex-wrap: wrap;
       justify-content: center;
+      align-items: center;
+      padding: 0 4px;
+      flex-shrink: 0;
+      max-width: 900px;
+      width: 100%;
     }
     .hud span { font-weight: bold; }
+    .hud > div { white-space: nowrap; }
     .controles {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
       justify-content: center;
+      flex-shrink: 0;
+      max-width: 900px;
+      width: 100%;
     }
     button {
       background: #f97316;
@@ -58,64 +90,393 @@
       touch-action: manipulation;
     }
     button:active { transform: scale(0.95); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     button.secundario { background: #7c3aed; }
     button.parar { background: #dc2626; }
+    button.verde { background: #16a34a; }
+    button.rodape { background: #475569; }
+    #btn-mute {
+      background: #334155;
+      min-width: 56px;
+      padding: 8px 12px;
+      font-size: 18px;
+    }
+
+    /* Painel de atalhos de teclado — visível APENAS em desktop/notebook */
+    #atalhos {
+      display: none;
+      max-width: 900px;
+      width: 100%;
+      background: rgba(124, 58, 237, 0.10);
+      border: 1px solid rgba(124, 58, 237, 0.35);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #cbd5e1;
+      text-align: center;
+      flex-shrink: 0;
+      line-height: 1.7;
+    }
+    #atalhos strong { color: #facc15; }
+    #atalhos kbd {
+      display: inline-block;
+      background: #1e1b34;
+      border: 1px solid #7c3aed;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      font-size: 12px;
+      color: #e9d5ff;
+      margin: 0 2px;
+    }
+
     #referencia {
       max-width: 900px;
       width: 100%;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.04);
       border-radius: 10px;
-      padding: 12px;
+      padding: 10px 12px;
       font-size: 13px;
-      line-height: 1.6;
+      line-height: 1.55;
       text-align: center;
       color: #cbd5e1;
+      flex-shrink: 0;
     }
     #referencia strong { color: #facc15; }
     .perda { color: #f87171; }
     .ganho { color: #4ade80; }
     .ganho-raro { color: #38bdf8; font-weight: bold; }
-    @media (max-width: 480px) {
-      button { padding: 14px 16px; font-size: 14px; min-width: 80px; }
-      .hud { font-size: 14px; }
+
+    #painelRecordes {
+      max-width: 900px;
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #cbd5e1;
+      flex-shrink: 0;
+    }
+    #painelRecordes > summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #c4b5fd;
+      font-weight: 700;
+      text-align: center;
+      padding: 4px 0;
+      user-select: none;
+    }
+    #painelRecordes > summary::-webkit-details-marker { display: none; }
+    #painelRecordes > summary::after { content: ' ▾'; color: #7c3aed; }
+    #painelRecordes[open] > summary::after { content: ' ▴'; }
+    #painelRecordes .conteudo {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      padding-top: 8px;
+    }
+    #nameInput {
+      background: rgba(0,0,0,0.4);
+      border: 2px solid #7c3aed;
+      color: #f8fafc;
+      font-family: inherit;
+      font-size: 14px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      text-align: center;
+      width: min(280px, 90%);
+      outline: none;
+    }
+    #nameInput:focus { border-color: #f97316; box-shadow: 0 0 12px rgba(249,115,22,0.4); }
+    #listaRecordes {
+      list-style: none;
+      width: 100%;
+      max-width: 520px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid #7c3aed;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12.5px;
+    }
+    #listaRecordes li {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 0;
+      border-bottom: 1px dashed rgba(196,181,253,0.15);
+    }
+    #listaRecordes li:last-child { border-bottom: none; }
+    #listaRecordes .nome-rec {
+      color: #facc15; font-weight: bold;
+      overflow: hidden; text-overflow: ellipsis;
+      max-width: 130px; white-space: nowrap;
+    }
+    #listaRecordes .data-rec { color: #94a3b8; font-size: 11px; }
+
+    /* ==========================================================
+       MOBILE — coluna única. Botões SEMPRE abaixo do canvas,
+       tanto em retrato quanto em paisagem. Sem layout horizontal
+       lateral.
+       ========================================================== */
+    @media (max-width: 640px) {
+      body { gap: 6px; padding: 6px; }
+      #canvas-morcego {
+        max-height: 46dvh;
+        border-radius: 8px;
+      }
+      .hud {
+        font-size: 13.5px; gap: 10px;
+        justify-content: space-between;
+        padding: 2px 6px;
+        flex-wrap: nowrap;
+      }
+      .hud > div { font-size: 13px; }
+      #btn-mute { min-width: 44px; padding: 6px 10px; font-size: 16px; }
+      button { padding: 12px 14px; font-size: 14px; min-width: 78px; }
+      .controles { gap: 6px; }
+      #referencia { font-size: 11.5px; padding: 8px; line-height: 1.5; }
+      #painelRecordes { font-size: 12px; padding: 8px 10px; }
+      #painelRecordes > summary { font-size: 12.5px; }
+      #listaRecordes { font-size: 11.5px; }
+      #listaRecordes .nome-rec { max-width: 90px; }
+      /* #atalhos segue display:none em mobile — sem teclas de atalho. */
+    }
+
+    /* Paisagem mobile: só comprime o canvas; botões continuam abaixo.
+       Sem orientation na query — vale para qualquer tela baixa. */
+    @media (max-height: 540px) {
+      #canvas-morcego { max-height: 42dvh; }
+      body { gap: 5px; padding: 5px; }
+      #referencia { display: none; }
+    }
+    @media (max-height: 400px) {
+      #canvas-morcego { max-height: 38dvh; }
+      .hud { font-size: 12px; }
+      button { padding: 10px 12px; font-size: 13px; }
+    }
+
+    /* ==========================================================
+       DESKTOP / NOTEBOOK — restaura proporções originais e
+       expõe o painel de atalhos de teclado.
+       ========================================================== */
+    @media (min-width: 641px) and (min-height: 541px) {
+      #canvas-morcego { max-height: 70dvh; }
+      #atalhos { display: block; }
+      .hud { font-size: 16px; }
+      #referencia { font-size: 13px; }
     }
   </style>
 </head>
 <body>
-<canvas id="canvas-morcego" width="960" height="340"></canvas>
-<div class="hud">
-  <div>Pontos: <span id="hud-pontos">0</span></div>
-  <div>Fase: <span id="hud-fase">1</span></div>
-  <div>Vidas: <span id="hud-vidas">♥♥♥</span></div>
-</div>
-<div class="controles">
-  <button onclick="iniciarJogoMorcego()">Iniciar</button>
-  <button class="secundario" onclick="subirMorcego()">▲ Subir</button>
-  <button class="secundario" onclick="descerMorcego()">▼ Descer</button>
-  <button class="parar" onclick="pararJogoMorcego()">Parar</button>
-</div>
-<div id="referencia">
-  <span class="ganho">🕯️ Vela (+15 pts)</span> &nbsp;|&nbsp;
-  <span class="ganho-raro">🍦 Sorvete (+50 pts, raro)</span> &nbsp;|&nbsp;
-  <span class="perda">🪦 Túmulo (−1 vida, −10 pts)</span><br>
-  <strong>Fase sobe a cada 100 pts:</strong> mais velocidade, mais túmulos e sorvetes mais raros.
-</div>
+  <canvas id="canvas-morcego" width="960" height="340"></canvas>
+
+  <div class="hud">
+    <div>Pontos: <span id="hud-pontos">0</span></div>
+    <div>Fase: <span id="hud-fase">1</span></div>
+    <div>Vidas: <span id="hud-vidas">♥♥♥</span></div>
+    <button id="btn-mute" title="Ativar/desativar som" aria-label="Ativar/desativar som">🔊</button>
+  </div>
+
+  <div class="controles">
+    <button onclick="iniciarJogoMorcego()">Iniciar</button>
+    <button class="secundario" onclick="subirMorcego()">▲ Subir</button>
+    <button class="secundario" onclick="descerMorcego()">▼ Descer</button>
+    <button class="parar" onclick="pararJogoMorcego()">Parar</button>
+  </div>
+
+  <div id="atalhos">
+    <strong>Atalhos de teclado:</strong>
+    <kbd>↑</kbd> / <kbd>W</kbd> subir · <kbd>↓</kbd> / <kbd>S</kbd> descer · clique no canvas ou nos botões também funciona
+  </div>
+
+  <div id="referencia">
+    <span class="ganho">🕯️ Vela (+15 pts)</span> &nbsp;|&nbsp;
+    <span class="ganho-raro">🍦 Sorvete (+50 pts, raro)</span> &nbsp;|&nbsp;
+    <span class="perda">🪦 Túmulo (−1 vida, −10 pts)</span><br>
+    <strong>Fase sobe a cada 100 pts:</strong> mais velocidade, mais túmulos e sorvetes mais raros.
+  </div>
+
+  <details id="painelRecordes" open>
+    <summary>🏆 Recordes</summary>
+    <div class="conteudo">
+      <input id="nameInput" type="text" maxlength="20" placeholder="Seu nome (p/ certificado)" autocomplete="off" aria-label="Nome do jogador">
+      <ul id="listaRecordes"></ul>
+      <div class="controles">
+        <button id="btn-certificado" class="verde">🖨️ Imprimir Certificado</button>
+        <button id="btn-exportar" class="rodape">⬇ Exportar Recordes</button>
+      </div>
+    </div>
+  </details>
+
 <script>
+// ============================================================
+// 1. Áudio procedural (Web Audio API, sem arquivos externos)
+// ============================================================
+var AudioCtx = null;
+var muteSom = false;
+try { muteSom = localStorage.getItem('morcego_mute') === '1'; } catch (e) {}
+
+function getCtx() {
+  if (muteSom) return null;
+  try {
+    if (!AudioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      AudioCtx = new AC();
+    }
+    if (AudioCtx.state === 'suspended') AudioCtx.resume();
+    return AudioCtx;
+  } catch (e) { return null; }
+}
+
+function tone(freq, dur, type, vol, glideTo) {
+  var ac = getCtx();
+  if (!ac) return;
+  try {
+    var o = ac.createOscillator();
+    var g = ac.createGain();
+    o.type = type || 'sine';
+    o.frequency.value = freq;
+    var now = ac.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(vol || 0.08, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    if (glideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, glideTo), now + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(now);
+    o.stop(now + dur + 0.02);
+  } catch (e) {}
+}
+
+var _noiseBuffer = null;
+function getNoiseBuffer() {
+  var ac = getCtx(); if (!ac) return null;
+  if (!_noiseBuffer) {
+    var len = Math.floor(ac.sampleRate * 0.4);
+    _noiseBuffer = ac.createBuffer(1, len, ac.sampleRate);
+    var data = _noiseBuffer.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  }
+  return _noiseBuffer;
+}
+
+var _comboVela = 0, _comboSorvete = 0;
+
+function playSwoosh() {
+  var ac = getCtx(); if (!ac) return;
+  var buf = getNoiseBuffer(); if (!buf) return;
+  try {
+    var src = ac.createBufferSource(); src.buffer = buf;
+    var bp = ac.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(600, ac.currentTime);
+    bp.frequency.exponentialRampToValueAtTime(2400, ac.currentTime + 0.18);
+    bp.Q.value = 1.2;
+    var g = ac.createGain();
+    g.gain.setValueAtTime(0.10, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.2);
+    src.connect(bp).connect(g).connect(ac.destination);
+    src.start(); src.stop(ac.currentTime + 0.22);
+  } catch (e) {}
+}
+
+function playVela() {
+  var escala = [523.25, 659.25, 783.99, 987.77, 1046.50, 1318.51, 1567.98];
+  var nota = escala[Math.min(_comboVela, escala.length - 1)];
+  _comboVela = (_comboVela + 1) % escala.length;
+  tone(nota, 0.09, 'triangle', 0.07);
+  setTimeout(function () { tone(nota * 1.5, 0.06, 'sine', 0.04); }, 40);
+  clearTimeout(playVela._t);
+  playVela._t = setTimeout(function(){ _comboVela = 0; }, 1200);
+}
+
+function playSorvete() {
+  var base = [523.25, 659.25, 783.99, 1046.50];
+  var tom = Math.pow(2, _comboSorvete / 12);
+  for (var i = 0; i < base.length; i++) {
+    (function (idx) {
+      setTimeout(function () {
+        if (!rodando && !AudioCtx) return;
+        tone(base[idx] * tom, 0.14, 'square', 0.05);
+        tone(base[idx] * tom * 2, 0.14, 'sine', 0.04);
+      }, idx * 90);
+    })(i);
+  }
+  setTimeout(function () {
+    if (!rodando && !AudioCtx) return;
+    tone(base[3] * tom, 0.35, 'triangle', 0.06);
+    tone(base[3] * tom * 1.5, 0.35, 'sine', 0.04);
+  }, base.length * 90 + 30);
+  _comboSorvete = (_comboSorvete + 1) % 4;
+  clearTimeout(playSorvete._t);
+  playSorvete._t = setTimeout(function(){ _comboSorvete = 0; }, 4000);
+}
+
+function playTumulo() {
+  tone(233.08, 0.16, 'sawtooth', 0.10, 180);
+  setTimeout(function () { tone(155.56, 0.28, 'sawtooth', 0.10, 100); }, 130);
+  setTimeout(function () { tone(77.78, 0.45, 'sawtooth', 0.08, 55); }, 360);
+}
+
+function playFase() {
+  var notas = [523.25, 659.25, 783.99, 1046.50];
+  for (var i = 0; i < notas.length; i++) {
+    (function (idx) {
+      setTimeout(function () { tone(notas[idx], 0.12, 'square', 0.06); }, idx * 70);
+    })(i);
+  }
+  setTimeout(function () { tone(1567.98, 0.30, 'triangle', 0.07); }, notas.length * 70);
+}
+
+function playGameOver() {
+  var notas = [523.25, 415.30, 329.63, 261.63];
+  for (var i = 0; i < notas.length; i++) {
+    (function (idx) {
+      setTimeout(function () { tone(notas[idx], 0.22, 'sawtooth', 0.07); }, idx * 180);
+    })(i);
+  }
+  setTimeout(function () {
+    tone(130.81, 0.6, 'triangle', 0.09);
+    tone(196.00, 0.6, 'triangle', 0.06);
+  }, notas.length * 180);
+}
+
+function playStart() {
+  tone(392.00, 0.10, 'square', 0.06);
+  setTimeout(function(){ tone(523.25, 0.10, 'square', 0.06); }, 90);
+  setTimeout(function(){ tone(659.25, 0.15, 'square', 0.06); }, 180);
+}
+
+var btnMute = document.getElementById('btn-mute');
+function atualizarMuteUI() {
+  btnMute.textContent = muteSom ? '🔇' : '🔊';
+  btnMute.setAttribute('aria-pressed', muteSom ? 'true' : 'false');
+}
+btnMute.addEventListener('click', function () {
+  muteSom = !muteSom;
+  try { localStorage.setItem('morcego_mute', muteSom ? '1' : '0'); } catch (e) {}
+  atualizarMuteUI();
+  if (!muteSom) { getCtx(); playStart(); }
+});
+atualizarMuteUI();
+
+// ============================================================
+// 2. Lógica do jogo
+// ============================================================
 var canvas = document.getElementById("canvas-morcego");
 var ctx = canvas.getContext("2d");
-
 var LARGURA = 960, ALTURA = 340;
-
 var morcego = { x: 110, y: ALTURA / 2, vy: 0, tamanho: 22 };
 var obstaculos = [];
-var pontos = 0;
-var vidas = 3;
-var fase = 1;
-var rodando = false;
-var ultimoFrame = 0;
-var contadorSpawn = 0;
-var teclas = {};
-var frameId = null;
+var pontos = 0, vidas = 3, fase = 1;
+var rodando = false, ultimoFrame = 0, contadorSpawn = 0;
+var teclas = {}, frameId = null, inicioPartidaMs = 0;
 
 document.addEventListener("keydown", function (e) {
   teclas[e.key] = true;
@@ -147,15 +508,19 @@ canvas.addEventListener("touchstart", function(e) {
   if (yToque < 0.5) subirMorcego(); else descerMorcego();
 }, {passive:false});
 
-function subirMorcego()  { morcego.vy = -260; }
-function descerMorcego() { morcego.vy =  260; }
+var ultimaDirecao = null;
+function subirMorcego()  { morcego.vy = -260; if (ultimaDirecao !== 'up') { playSwoosh(); ultimaDirecao = 'up'; } }
+function descerMorcego() { morcego.vy =  260; if (ultimaDirecao !== 'down') { playSwoosh(); ultimaDirecao = 'down'; } }
 
 function iniciarJogoMorcego() {
   if (frameId) cancelAnimationFrame(frameId);
   morcego = { x: 110, y: ALTURA / 2, vy: 0, tamanho: 22 };
   obstaculos = [];
   pontos = 0; vidas = 3; fase = 1; contadorSpawn = 0;
+  _comboVela = 0; _comboSorvete = 0; ultimaDirecao = null;
   rodando = true;
+  inicioPartidaMs = Date.now();
+  playStart();
   ultimoFrame = performance.now();
   frameId = requestAnimationFrame(loop);
 }
@@ -166,16 +531,11 @@ function pararJogoMorcego() {
   frameId = null;
 }
 
-// ---- Sorteio de tipo de obstáculo baseado na fase ----
 function sortearTipo(fase) {
   var r = Math.random();
-  // Chance de túmulo: começa em 45%, sobe até 70% na fase 6+
   var chanceTumulo = Math.min(0.70, 0.45 + (fase - 1) * 0.05);
-  // Chance de sorvete: começa em 12%, cai até 4% na fase 7+ (raro)
   var chanceSorvete = Math.max(0.04, 0.12 - (fase - 1) * 0.015);
-  // Vela: o restante (garante soma 1)
   var chanceVela = 1 - chanceTumulo - chanceSorvete;
-
   if (r < chanceTumulo) return "tumulo";
   if (r < chanceTumulo + chanceVela) return "vela";
   return "sorvete";
@@ -185,22 +545,16 @@ function loop(tempo) {
   if (!rodando) return;
   var dt = Math.min((tempo - ultimoFrame) / 1000, 0.05);
   ultimoFrame = tempo;
-
   if (teclas["ArrowUp"]   || teclas["w"] || segurandoSubir)  morcego.vy = -260;
   if (teclas["ArrowDown"] || teclas["s"] || segurandoDescer) morcego.vy =  260;
-
   morcego.y += morcego.vy * dt;
   morcego.vy *= 0.88;
   if (morcego.y < 24) morcego.y = 24;
   if (morcego.y > ALTURA - 24) morcego.y = ALTURA - 24;
-
   var novaFase = 1 + Math.floor(pontos / 100);
-  if (novaFase !== fase) fase = novaFase;
-
+  if (novaFase !== fase) { fase = novaFase; playFase(); }
   var multiplicadorVelocidade = 1 + (fase - 1) * 0.4;
-
   var intervaloSpawn = Math.max(0.45, 1.25 - (fase - 1) * 0.15);
-
   contadorSpawn += dt;
   if (contadorSpawn > intervaloSpawn) {
     contadorSpawn = 0;
@@ -214,34 +568,27 @@ function loop(tempo) {
       });
     }
   }
-
   obstaculos.forEach(function (o) { o.x -= 280 * multiplicadorVelocidade * dt; });
-
   for (var i = obstaculos.length - 1; i >= 0; i--) {
     var o = obstaculos[i];
-    var dx = o.x - morcego.x;
-    var dy = o.y - morcego.y;
+    var dx = o.x - morcego.x, dy = o.y - morcego.y;
     if (Math.sqrt(dx*dx + dy*dy) < o.r + morcego.tamanho * 0.7) {
-      if (o.tipo === "vela") {
-        pontos += 15;
-      } else if (o.tipo === "sorvete") {
-        pontos += 50;
-      } else {
+      if (o.tipo === "vela") { pontos += 15; playVela(); }
+      else if (o.tipo === "sorvete") { pontos += 50; playSorvete(); }
+      else {
         vidas--;
         pontos = Math.max(0, pontos - 10);
-        if (vidas <= 0) { rodando = false; }
+        playTumulo();
+        if (vidas <= 0) { rodando = false; playGameOver(); finalizarPartida(); }
       }
       obstaculos.splice(i, 1);
     } else if (o.x < -50) {
       obstaculos.splice(i, 1);
     }
   }
-
   document.getElementById("hud-pontos").innerText = pontos;
   document.getElementById("hud-fase").innerText = fase;
-  document.getElementById("hud-vidas").innerText =
-    "\u2665".repeat(Math.max(0, vidas)) || "—";
-
+  document.getElementById("hud-vidas").innerText = "\u2665".repeat(Math.max(0, vidas)) || "—";
   desenhar();
   if (rodando) frameId = requestAnimationFrame(loop);
 }
@@ -253,30 +600,19 @@ function desenhar() {
   grad.addColorStop(1, "#2a0f1f");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, LARGURA, ALTURA);
-
   ctx.fillStyle = "#fef3c7";
   ctx.beginPath();
   ctx.arc(LARGURA - 80, 60, 30, 0, Math.PI * 2);
   ctx.fill();
-
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   obstaculos.forEach(function (o) {
-    if (o.tipo === "vela") {
-      ctx.font = "32px serif";
-      ctx.fillText("\uD83D\uDD6F\uFE0F", o.x, o.y);
-    } else if (o.tipo === "sorvete") {
-      ctx.font = "36px serif";
-      ctx.fillText("\uD83C\uDF66", o.x, o.y);
-    } else {
-      ctx.font = "32px serif";
-      ctx.fillText("\uD83E\uDEA6", o.x, o.y);
-    }
+    if (o.tipo === "vela") { ctx.font = "32px serif"; ctx.fillText("\uD83D\uDD6F\uFE0F", o.x, o.y); }
+    else if (o.tipo === "sorvete") { ctx.font = "36px serif"; ctx.fillText("\uD83C\uDF66", o.x, o.y); }
+    else { ctx.font = "32px serif"; ctx.fillText("\uD83E\uDEA6", o.x, o.y); }
   });
-
   ctx.font = "44px serif";
   ctx.fillText("\uD83E\uDD87", morcego.x, morcego.y);
-
   if (!rodando && vidas <= 0) {
     ctx.fillStyle = "rgba(0,0,0,0.72)";
     ctx.fillRect(0, 0, LARGURA, ALTURA);
@@ -288,6 +624,250 @@ function desenhar() {
     ctx.fillText("Pontos: " + pontos + "  |  Fase: " + fase, LARGURA / 2, ALTURA / 2 + 20);
   }
 }
+
+// ============================================================
+// 3. Persistência (localStorage, schemaVersion, backup)
+// ============================================================
+var SCHEMA_VERSION = 1;
+var STORAGE_KEY = 'morcego_scores_v1';
+var BACKUP_KEY_PREFIX = 'morcego_scores_backup_';
+var MAX_HIGHSCORES = 5;
+var estadoPersistencia = { readOnly: false, lastError: null };
+
+function sanitizeNome(raw) {
+  return String(raw || '').replace(/[<>&"'`\\]/g, '').trim().slice(0, 20);
+}
+function escapeHtml(s) {
+  return String(s).replace(/[<>&"']/g, function (c) {
+    return { '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+
+function loadScores() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return [];
+    var ver = Number(parsed.schemaVersion) || 0;
+    if (ver > SCHEMA_VERSION) {
+      estadoPersistencia.readOnly = true;
+      return Array.isArray(parsed.records) ? parsed.records : [];
+    }
+    estadoPersistencia.readOnly = false;
+    return Array.isArray(parsed.records) ? parsed.records : [];
+  } catch (err) {
+    console.warn('Falha ao carregar recordes:', err);
+    estadoPersistencia.lastError = err.message;
+    return [];
+  }
+}
+
+function backupStorage() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return true;
+    localStorage.setItem(BACKUP_KEY_PREFIX + Date.now(), raw);
+    var keys = Object.keys(localStorage)
+      .filter(function (k) { return k.indexOf(BACKUP_KEY_PREFIX) === 0; })
+      .sort();
+    while (keys.length > 2) localStorage.removeItem(keys.shift());
+    return true;
+  } catch (err) {
+    console.warn('Backup local falhou:', err);
+    estadoPersistencia.lastError = err.message;
+    return false;
+  }
+}
+
+function saveScore(score, wave, name, durationMs) {
+  if (estadoPersistencia.readOnly) return false;
+  score = Number(score); wave = Number(wave); durationMs = Number(durationMs) || 0;
+  if (!Number.isFinite(score) || score <= 0) return false;
+  if (!Number.isFinite(wave) || wave < 1) return false;
+  if (score > 999999) return false;
+  try {
+    if (!backupStorage()) { estadoPersistencia.lastError = 'Backup falhou.'; return false; }
+    var scores = loadScores();
+    scores.push({
+      score: score, wave: wave,
+      name: sanitizeNome(name) || 'Anônimo',
+      date: new Date().toISOString(),
+      durationMs: durationMs
+    });
+    scores.sort(function (a, b) { return b.score - a.score; });
+    var top = scores.slice(0, MAX_HIGHSCORES);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: SCHEMA_VERSION, records: top }));
+    estadoPersistencia.lastError = null;
+    return true;
+  } catch (err) {
+    console.warn('Falha ao gravar recordes:', err);
+    estadoPersistencia.lastError = err.message;
+    return false;
+  }
+}
+
+function renderListaRecordes() {
+  var lista = document.getElementById('listaRecordes');
+  if (!lista) return;
+  var scores = loadScores();
+  if (estadoPersistencia.readOnly) {
+    lista.innerHTML =
+      '<li style="justify-content:center;color:#fbbf24;font-weight:bold;padding:6px">' +
+      '⚠️ Modo somente leitura (dados de versão superior detectados)</li>';
+  }
+  if (scores.length === 0) {
+    lista.innerHTML =
+      '<li style="justify-content:center;color:#64748b;padding:6px">' +
+      'Nenhum recorde ainda. Jogue para entrar no ranking!</li>';
+    return;
+  }
+  var medalhas = ['🥇','🥈','🥉','4º','5º'];
+  lista.innerHTML = scores.map(function (s, i) {
+    var medalha = medalhas[i] || (i + 1) + 'º';
+    var dataFmt = s.date ? new Date(s.date).toLocaleDateString('pt-BR') : '—';
+    var nome = escapeHtml(s.name || 'Anônimo');
+    var fase = (s.wave != null) ? 'F' + s.wave : 'F?';
+    return '<li>' +
+      '<span>' + medalha + ' <span class="nome-rec" title="' + nome + '">' + nome + '</span></span>' +
+      '<span>' + s.score + ' pts · ' + fase + '</span>' +
+      '<span class="data-rec">' + dataFmt + '</span></li>';
+  }).join('');
+}
+
+function finalizarPartida() {
+  var nome = sanitizeNome((document.getElementById('nameInput') || {}).value || '');
+  var dur = Math.max(0, Date.now() - inicioPartidaMs);
+  var salvo = saveScore(pontos, fase, nome, dur);
+  renderListaRecordes();
+  if (!salvo && estadoPersistencia.lastError) {
+    console.warn('Recorde não foi salvo:', estadoPersistencia.lastError);
+  }
+}
+
+try {
+  var nomeSalvo = localStorage.getItem('morcego_player_name');
+  if (nomeSalvo) document.getElementById('nameInput').value = nomeSalvo;
+} catch (e) {}
+
+document.getElementById('nameInput').addEventListener('input', function (e) {
+  try { localStorage.setItem('morcego_player_name', sanitizeNome(e.target.value)); } catch (err) {}
+});
+
+// ============================================================
+// 4. Certificado (impressão → salvar como PDF)
+// ============================================================
+document.getElementById('btn-certificado').addEventListener('click', imprimirCertificado);
+
+function imprimirCertificado() {
+  var scores = loadScores();
+  var nome = sanitizeNome((document.getElementById('nameInput') || {}).value || '');
+  if (!nome) nome = 'Jogador Anônimo';
+  var data = new Date().toLocaleString('pt-BR');
+  var medalhas = ['🥇','🥈','🥉','4º','5º'];
+  var linhasHtml = '';
+  if (scores.length === 0) {
+    linhasHtml = '<tr><td colspan="4" style="text-align:center;color:#666;padding:14px;font-style:italic">Nenhum recorde registrado</td></tr>';
+  } else {
+    for (var i = 0; i < scores.length; i++) {
+      var s = scores[i];
+      var ehDoJogador = sanitizeNome(s.name || '').toLowerCase() === nome.toLowerCase();
+      var estilo = ehDoJogador ? 'background:#fff7d6;font-weight:bold;' : '';
+      linhasHtml += '<tr style="' + estilo + '">' +
+        '<td style="padding:8px 10px;text-align:center">' + (medalhas[i] || (i+1)+'º') + '</td>' +
+        '<td style="padding:8px 10px">' + escapeHtml(s.name || 'Anônimo') + '</td>' +
+        '<td style="padding:8px 10px;text-align:center">' + s.score + '</td>' +
+        '<td style="padding:8px 10px;text-align:center">F' + (s.wave != null ? s.wave : '?') + '</td></tr>';
+    }
+  }
+  var melhorDoJogador = null;
+  for (var j = 0; j < scores.length; j++) {
+    if (sanitizeNome(scores[j].name || '').toLowerCase() === nome.toLowerCase()) {
+      melhorDoJogador = scores[j]; break;
+    }
+  }
+  var topLinha = melhorDoJogador
+    ? '<div class="destaque">Sua melhor marca: <b>' + melhorDoJogador.score +
+      ' pontos</b> na <b>fase ' + (melhorDoJogador.wave != null ? melhorDoJogador.wave : '?') + '</b></div>'
+    : '<div class="destaque">Ainda sem partida registrada como <b>' +
+      escapeHtml(nome) + '</b>. Jogue para entrar no ranking!</div>';
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+    '<title>Certificado - Voo do Morcego</title>' +
+    '<style>' +
+    '@page { size: A4 portrait; margin: 16mm; }' +
+    '* { box-sizing: border-box; }' +
+    'body { font-family: Georgia, "Times New Roman", serif; color: #1f1535; margin: 0; padding: 28px; background: #fff; }' +
+    '.frame { border: 6px double #7c3aed; border-radius: 12px; padding: 34px 26px; text-align: center;' +
+    '  background: radial-gradient(circle at 50% 0%, rgba(249,115,22,0.10), transparent 60%); }' +
+    'h1 { color: #7c3aed; margin: 0 0 4px; font-size: 26px; letter-spacing: 2px; text-transform: uppercase; }' +
+    'h2 { color: #f97316; margin: 0 0 22px; font-size: 14px; font-weight: normal; letter-spacing: 2px; text-transform: uppercase; }' +
+    '.emojis { font-size: 28px; margin: 4px 0 14px; letter-spacing: 10px; }' +
+    'p.legenda { font-size: 14px; line-height: 1.6; max-width: 560px; margin: 0 auto 12px; color: #333; }' +
+    '.destaque { margin: 16px auto 20px; padding: 10px 16px; border-left: 4px solid #f97316;' +
+    '  background: #fff7ed; color: #7c2d12; font-size: 14.5px; text-align: left; max-width: 540px; }' +
+    'table { width: 100%; border-collapse: collapse; margin: 12px auto 8px; font-size: 13.5px; }' +
+    'th { background: #7c3aed; color: #fff; padding: 8px 10px; text-align: center; font-weight: bold; }' +
+    'th:nth-child(2) { text-align: left; }' +
+    'td { border-bottom: 1px solid #ede9fe; }' +
+    'tr:nth-child(even) td { background: #faf5ff; }' +
+    '.rodape { margin-top: 22px; font-size: 11.5px; color: #666; line-height: 1.5; }' +
+    '.botoes { text-align: center; margin: 18px 0; }' +
+    '.botoes button { font-family: sans-serif; font-size: 15px; padding: 10px 22px; border-radius: 8px;' +
+    '  border: none; cursor: pointer; background: #7c3aed; color: #fff; font-weight: bold; }' +
+    '@media print { body { padding: 0; } .nao-imprimir { display: none !important; } }' +
+    '</style></head><body>' +
+    '<div class="botoes nao-imprimir">' +
+    '<button onclick="window.print()">🖨️ Salvar como PDF / Imprimir</button></div>' +
+    '<div class="frame">' +
+    '<div class="emojis">🦇 🕯️ 🍦 🪦</div>' +
+    '<h1>Certificado de Voo Noturno</h1>' +
+    '<h2>Lab 3 — Voo do Morcego</h2>' +
+    '<p class="legenda">Certificamos que o(a) piloto abaixo encarou a noite, desviou de túmulos ' +
+    'e caçou velas e sorvetes em pleno voo, com toda a coragem que um morcego pode ter.</p>' +
+    topLinha +
+    '<table><thead><tr><th>#</th><th>Piloto</th><th>Pontos</th><th>Fase</th></tr></thead>' +
+    '<tbody>' + linhasHtml + '</tbody></table>' +
+    '<div class="rodape">Emitido em ' + escapeHtml(data) + ' · Documento gerado automaticamente. ' +
+    'Válido em qualquer céu noturno.</div></div>' +
+    '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},400);});<\/script>' +
+    '</body></html>';
+
+  var w = window.open('', '_blank', 'width=820,height=1000');
+  if (!w) { alert('Permita pop-ups para gerar o certificado.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
+// ============================================================
+// 5. Exportação de recordes (JSON)
+// ============================================================
+document.getElementById('btn-exportar').addEventListener('click', function () {
+  var scores = loadScores();
+  var data = {
+    exportedAt: new Date().toISOString(),
+    game: 'Lab 3 - Voo do Morcego',
+    schemaVersion: SCHEMA_VERSION,
+    readOnly: estadoPersistencia.readOnly,
+    records: scores
+  };
+  try {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'voo-do-morcego-recordes-' + Date.now() + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  } catch (err) {
+    alert('Não foi possível exportar os recordes: ' + err.message);
+  }
+});
+
+// ============================================================
+// 6. Init
+// ============================================================
+renderListaRecordes();
+desenhar();
 </script>
 </body>
 </html>
